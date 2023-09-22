@@ -1,0 +1,15 @@
+# python cache
+__pycache__/
+
+# Mac
+.DS_Store/
+
+# vscode
+.vscode/
+
+# yacc
+parser.out
+parsetab.py
+
+# test
+test*
