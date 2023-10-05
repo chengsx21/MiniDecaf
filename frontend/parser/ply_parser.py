@@ -21,6 +21,13 @@ tokens = lex.tokens
 error_stack = list[DecafSyntaxError]()
 
 
+'''
+    每个函数对应于不同的语法规则
+    用作语法规则的处理器
+    匹配到对应的语法规则
+    调用这些函数来构建 AST 节点
+'''
+
 def unary(p):
     p[0] = Unary(UnaryOp.backward_search(p[1]), p[2])
 

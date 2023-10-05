@@ -13,11 +13,14 @@ from .ply_lexer import lexer as ply_lexer
 
 
 class LexToken(Protocol):
+    '''
+        词法分析器生成的词法单元
+    '''
     def __init__(self) -> None:
         self.type: str
-        self.value: Union[str, node.Node]
-        self.lineno: int
-        self.lexpos: int
+        self.value: Union[str, node.Node] # 字符串或 AST 节点
+        self.lineno: int # 源文件行号
+        self.lexpos: int # 源文件位置
         self.lexer: Lexer
 
     def __str__(self) -> str:
@@ -28,17 +31,26 @@ class LexToken(Protocol):
 
 
 class Lexer(Protocol):
+    '''
+        描述词法分析器本身
+    '''
     def __init__(self) -> None:
-        self.lexdata: str
+        self.lexdata: str # 词法分析器的输入源代码
         self.lexpos: int
         self.lineno: int
 
-        self.error_stack: list[DecafLexError]
+        self.error_stack: list[DecafLexError] # 存储词法分析错误的列表
 
     def input(self, s: str) -> None:
+        '''
+            输入源代码传递给词法分析器
+        '''
         ...
 
     def token(self) -> LexToken:
+        '''
+            生成下一个词法单元
+        '''
         ...
 
     def __iter__(self) -> Iterator[LexToken]:

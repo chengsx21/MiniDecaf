@@ -18,6 +18,7 @@ error_stack: List[DecafLexError] = []
 states = (("multiline", "exclusive"),)
 
 
+# 使用装饰器定义词法规则 匹配多行注释起始部分进入 multiline 状态
 @lex.TOKEN(r"/\*")
 def t_multiline(t):
     t.lexer.begin("multiline")
@@ -41,6 +42,7 @@ def t_ANY_error(t):
     t.lexer.skip(1)
 
 
+# 将标识符的值转化为 AST 节点
 def _identifier_into_node(f):
     @wraps(f)
     def wrapped(t):
@@ -55,6 +57,7 @@ def _identifier_into_node(f):
 t_Identifier = _identifier_into_node(t_Identifier)
 
 
+# 将整数字面值的值转化为 AST 节点
 def _intlit_into_node(f):
     @wraps(f)
     def wrapped(t):

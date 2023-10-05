@@ -11,6 +11,7 @@ Refer to https://www.dabeaz.com/ply/ply.html for more details.
 """
 
 # Reserved keywords
+# 保留关键字和类型, 在源代码中解析成相应标记类型
 reserved = {
     "return": "Return",
     "int": "Int",
@@ -20,6 +21,7 @@ reserved = {
     "break": "Break",
 }
 
+# 定义单字符标记类型
 t_Semi = ";"
 
 t_LParen = "("
@@ -51,12 +53,21 @@ t_GreaterEqual = ">="
 t_Assign = "="
 
 
+'''
+    使用正则表达式匹配连续的数字
+    匹配到的字符串转换成整数类型
+'''
 def t_Integer(t):
     r"[0-9]+"  # can be accessed from `t_Interger.__doc__`
     t.value = int(t.value)
     return t
 
 
+'''
+    使用正则表达式匹配字符串
+    匹配到的标识符在 reserved 字典中
+    否则将被标记为 Identifier
+'''
 def t_Identifier(t):
     r"[a-zA-Z_][0-9a-zA-Z_]*"
     t.type = reserved.get(t.value, "Identifier")
