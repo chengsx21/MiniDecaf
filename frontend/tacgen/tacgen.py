@@ -234,6 +234,10 @@ class TACGen(Visitor[TACFuncEmitter, None]):
 
         op = {
             node.BinaryOp.Add: tacop.TacBinaryOp.ADD,
+            node.BinaryOp.Sub: tacop.TacBinaryOp.SUB,
+            node.BinaryOp.Mul: tacop.TacBinaryOp.MUL,
+            node.BinaryOp.Div: tacop.TacBinaryOp.DIV,
+            node.BinaryOp.Mod: tacop.TacBinaryOp.MOD,
             node.BinaryOp.LogicOr: tacop.TacBinaryOp.LOR,
             # You can add binary operations here.
         }[expr.op]

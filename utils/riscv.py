@@ -24,6 +24,10 @@ class RvUnaryOp(Enum):
 @unique
 class RvBinaryOp(Enum):
     ADD = auto()
+    SUB = auto()
+    MUL = auto()
+    DIV = auto()
+    REM = auto() # 取模
     OR = auto()
 
 class Riscv:

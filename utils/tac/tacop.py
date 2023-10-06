@@ -27,6 +27,10 @@ class TacUnaryOp(Enum):
 @unique
 class TacBinaryOp(Enum):
     ADD = auto()
+    SUB = auto()
+    MUL = auto()
+    DIV = auto()
+    MOD = auto()
     LOR = auto()
 
 
