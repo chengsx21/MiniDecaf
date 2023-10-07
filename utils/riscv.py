@@ -20,6 +20,8 @@ class RvUnaryOp(Enum):
     NOT = auto()
     SEQZ = auto()
     SNEZ = auto()
+    SLTZ = auto()
+    SGTZ = auto()
 
 @unique
 class RvBinaryOp(Enum):
@@ -29,6 +31,9 @@ class RvBinaryOp(Enum):
     DIV = auto()
     REM = auto() # 取模
     OR = auto()
+    AND = auto()
+    SLT = auto()
+    SGT = auto()
 
 class Riscv:
 
