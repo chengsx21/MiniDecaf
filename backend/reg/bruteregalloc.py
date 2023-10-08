@@ -19,12 +19,12 @@ bindings: map from temp.index to Reg
 we don't need to take care of GlobalTemp here
 because we can remove all the GlobalTemp in selectInstr process
 
-1. accept：根据每个函数的 CFG 进行寄存器分配，寄存器分配结束后生成相应汇编代码
-2. bind：将一个 Temp 与寄存器绑定
-3. unbind：将一个 Temp 与相应寄存器解绑定
-4. localAlloc：根据数据流对一个 BasicBlock 内的指令进行寄存器分配
-5. allocForLoc：每一条指令进行寄存器分配
-6. allocRegFor：根据数据流决定为当前 Temp 分配哪一个寄存器
+1. accept: 根据每个函数的 CFG 进行寄存器分配，寄存器分配结束后生成相应汇编代码
+2. bind: 将一个 Temp 与寄存器绑定
+3. unbind: 将一个 Temp 与相应寄存器解绑定
+4. localAlloc: 根据数据流对一个 BasicBlock 内的指令进行寄存器分配
+5. allocForLoc: 每一条指令进行寄存器分配
+6. allocRegFor: 根据数据流决定为当前 Temp 分配哪一个寄存器
 """
 
 class BruteRegAlloc(RegAlloc):

@@ -158,26 +158,27 @@ class TACGen(Visitor[TACFuncEmitter, None]):
         mv.visitBranch(mv.getBreakLabel())
 
     def visitIdentifier(self, ident: Identifier, mv: TACFuncEmitter) -> None:
-        """
-        1. Set the 'val' attribute of ident as the temp variable of the 'symbol' attribute of ident.
-        """
-        raise NotImplementedError
+        # 设置返回值为标识符对应的 temp 寄存器
+        ident.setattr("val", ident.getattr("symbol").temp)
 
     def visitDeclaration(self, decl: Declaration, mv: TACFuncEmitter) -> None:
-        """
-        1. Get the 'symbol' attribute of decl.
-        2. Use mv.freshTemp to get a new temp variable for this symbol.
-        3. If the declaration has an initial value, use mv.visitAssignment to set it.
-        """
-        raise NotImplementedError
+        decl.getattr("symbol").temp = mv.freshTemp()
+        if decl.init_expr:
+            # 对子节点进行 accept
+            decl.init_expr.accept(self, mv)
+            # 模仿 `visitAssignment` 函数进行赋值
+            decl.setattr(
+                "val", mv.visitAssignment(decl.getattr("symbol").temp, decl.init_expr.getattr("val"))
+            )            
 
     def visitAssignment(self, expr: Assignment, mv: TACFuncEmitter) -> None:
-        """
-        1. Visit the right hand side of expr, and get the temp variable of left hand side.
-        2. Use mv.visitAssignment to emit an assignment instruction.
-        3. Set the 'val' attribute of expr as the value of assignment instruction.
-        """
-        raise NotImplementedError
+        # 对子节点进行 accept
+        expr.lhs.accept(self, mv)
+        expr.rhs.accept(self, mv)
+        # 设置返回值为赋值指令的返回值, 赋值操作更新左值, 左端项是左值 temp
+        expr.setattr(
+            "val", mv.visitAssignment(expr.lhs.getattr("symbol").temp, expr.rhs.getattr("val"))
+        )
 
     def visitIf(self, stmt: If, mv: TACFuncEmitter) -> None:
         stmt.cond.accept(self, mv)

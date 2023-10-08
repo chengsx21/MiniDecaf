@@ -89,19 +89,19 @@ class Namer(Visitor[Scope, None]):
     """
 
     def visitDeclaration(self, decl: Declaration, ctx: Scope) -> None:
-        """
-        1. Use ctx.lookup to find if a variable with the same name has been declared.
-        2. If not, build a new VarSymbol, and put it into the current scope using ctx.declare.
-        3. Set the 'symbol' attribute of decl.
-        4. If there is an initial value, visit it.
-        """
-        raise NotImplementedError
+        if ctx.lookup(decl.ident.value):
+            raise DecafDeclConflictError(decl.ident.value)
+        # 构造 VarSymbol 对象, 将其加入符号表, 并设置 decl 的 symbol 属性
+        symbol = VarSymbol(decl.ident.value, decl.var_t.type)
+        ctx.declare(symbol)
+        decl.setattr("symbol", symbol)
+        if decl.init_expr:
+            decl.init_expr.accept(self, ctx)
 
     def visitAssignment(self, expr: Assignment, ctx: Scope) -> None:
-        """
-        1. Refer to the implementation of visitBinary.
-        """
-        raise NotImplementedError
+        # 参考 `visitBinary` 的实现
+        expr.lhs.accept(self, ctx)
+        expr.rhs.accept(self, ctx)
 
     def visitUnary(self, expr: Unary, ctx: Scope) -> None:
         expr.operand.accept(self, ctx)
@@ -117,12 +117,11 @@ class Namer(Visitor[Scope, None]):
         raise NotImplementedError
 
     def visitIdentifier(self, ident: Identifier, ctx: Scope) -> None:
-        """
-        1. Use ctx.lookup to find the symbol corresponding to ident.
-        2. If it has not been declared, raise a DecafUndefinedVarError.
-        3. Set the 'symbol' attribute of ident.
-        """
-        raise NotImplementedError
+        symbol = ctx.lookup(ident.value)
+        if not symbol:
+            raise DecafUndefinedVarError(ident.value)
+        # 设置 ident 的 symbol 属性
+        ident.setattr("symbol", symbol)
 
     def visitIntLiteral(self, expr: IntLiteral, ctx: Scope) -> None:
         value = expr.value

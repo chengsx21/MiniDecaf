@@ -62,6 +62,9 @@ class RiscvAsmEmitter(AsmEmitter):
         def visitOther(self, instr: TACInstr) -> None:
             raise NotImplementedError("RiscvInstrSelector visit{} not implemented".format(type(instr).__name__))
 
+        def visitAssign(self, instr: Assign) -> None:
+            self.seq.append(Riscv.Move(instr.dst, instr.src))
+        
         # in step11, you need to think about how to deal with globalTemp in almost all the visit functions. 
         def visitReturn(self, instr: Return) -> None:
             if instr.value is not None:
