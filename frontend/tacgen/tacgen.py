@@ -254,10 +254,21 @@ class TACGen(Visitor[TACFuncEmitter, None]):
         )
 
     def visitCondExpr(self, expr: ConditionExpression, mv: TACFuncEmitter) -> None:
-        """
-        1. Refer to the implementation of visitIf and visitBinary.
-        """
-        raise NotImplementedError
+        expr.cond.accept(self, mv)
+        skipLabel = mv.freshLabel()
+        exitLabel = mv.freshLabel()
+        exprVal = expr.cond.getattr("val")
+        mv.visitCondBranch(
+            tacop.CondBranchOp.BEQ, exprVal, skipLabel
+        )
+        expr.then.accept(self, mv)
+        mv.visitAssignment(exprVal, expr.then.getattr("val"))
+        mv.visitBranch(exitLabel)
+        mv.visitLabel(skipLabel)
+        expr.otherwise.accept(self, mv)
+        mv.visitAssignment(exprVal, expr.otherwise.getattr("val"))
+        mv.visitLabel(exitLabel)
+        expr.setattr("val", exprVal)
 
     def visitIntLiteral(self, expr: IntLiteral, mv: TACFuncEmitter) -> None:
         expr.setattr("val", mv.visitLoad(expr.value))
