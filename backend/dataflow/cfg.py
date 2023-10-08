@@ -15,18 +15,26 @@ class CFG:
         self.edges = edges
 
         self.links = []
+        self.reachability = []
+        reachable = [0]
 
         for i in range(len(nodes)):
             self.links.append((set(), set()))
+            self.reachability.append(False)
 
         for (u, v) in edges:
             self.links[u][1].add(v)
             self.links[v][0].add(u)
 
-        """
-        You can start from basic block 0 and do a DFS traversal of the CFG
-        to find all the reachable basic blocks.
-        """
+        while True:
+            if not reachable:
+                break
+            cur = reachable.pop()
+            self.reachability[cur] = True
+            for succ in self.getSucc(cur):
+                if not self.reachability[succ]:
+                    self.reachability[succ] = True
+                    reachable.append(succ)
 
     def getBlock(self, id):
         return self.nodes[id]
@@ -45,3 +53,7 @@ class CFG:
 
     def iterator(self):
         return iter(self.nodes)
+
+    def reachable(self, id):
+        return self.reachability[id]
+    

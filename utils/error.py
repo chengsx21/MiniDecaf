@@ -115,3 +115,7 @@ class IllegalArgumentException(Exception):
 class NullPointerException(Exception):
     def __init__(self) -> None:
         super().__init__("NullPointerException")
+
+class ScopeOverflowError(Exception):
+    def __init__(self) -> None:
+        super().__init__("ScopeOverflowError")

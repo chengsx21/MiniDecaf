@@ -5,6 +5,7 @@ from frontend.ast.tree import *
 from frontend.ast.visitor import Visitor
 from frontend.scope.globalscope import GlobalScope
 from frontend.scope.scope import Scope
+from frontend.scope.scopestack import ScopeStack
 from frontend.type.array import ArrayType
 from utils.error import *
 
@@ -13,7 +14,7 @@ The typer phase: type check abstract syntax tree.
 """
 
 
-class Typer(Visitor[Scope, None]):
+class Typer(Visitor[ScopeStack, None]):
     def __init__(self) -> None:
         pass
 
