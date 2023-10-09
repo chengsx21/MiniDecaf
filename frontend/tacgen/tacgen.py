@@ -156,6 +156,9 @@ class TACGen(Visitor[TACFuncEmitter, None]):
 
     def visitBreak(self, stmt: Break, mv: TACFuncEmitter) -> None:
         mv.visitBranch(mv.getBreakLabel())
+        
+    def visitContinue(self, stmt: Continue, mv: TACFuncEmitter) -> None:
+        mv.visitBranch(mv.getContinueLabel())
 
     def visitIdentifier(self, ident: Identifier, mv: TACFuncEmitter) -> None:
         # 设置返回值为标识符对应的 temp 寄存器
@@ -214,6 +217,25 @@ class TACGen(Visitor[TACFuncEmitter, None]):
 
         stmt.body.accept(self, mv)
         mv.visitLabel(loopLabel)
+        mv.visitBranch(beginLabel)
+        mv.visitLabel(breakLabel)
+        mv.closeLoop()
+
+    def visitFor(self, stmt: For, mv: TACFuncEmitter) -> None:
+        beginLabel = mv.freshLabel()
+        loopLabel = mv.freshLabel()
+        breakLabel = mv.freshLabel()
+        mv.openLoop(breakLabel, loopLabel)
+
+        stmt.init.accept(self, mv)
+        mv.visitLabel(beginLabel)
+        if stmt.cond:
+            stmt.cond.accept(self, mv)
+            mv.visitCondBranch(tacop.CondBranchOp.BEQ, stmt.cond.getattr("val"), breakLabel)
+
+        stmt.body.accept(self, mv)
+        mv.visitLabel(loopLabel)
+        stmt.update.accept(self, mv)
         mv.visitBranch(beginLabel)
         mv.visitLabel(breakLabel)
         mv.closeLoop()

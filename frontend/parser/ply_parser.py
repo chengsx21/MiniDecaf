@@ -122,6 +122,22 @@ def p_while(p):
     p[0] = While(p[3], p[5])
 
 
+def p_for(p):
+    """
+    statement_matched : For LParen init_expression Semi opt_expression Semi opt_expression RParen statement_matched
+    statement_unmatched : For LParen init_expression Semi opt_expression Semi opt_expression RParen statement_unmatched
+    """
+    p[0] = For(p[3], p[5], p[7], p[9])
+
+
+def p_for_init(p):
+    """
+    init_expression : opt_expression
+    init_expression : declaration
+    """
+    p[0] = p[1]
+
+
 def p_return(p):
     """
     statement_matched : Return expression Semi
@@ -148,6 +164,13 @@ def p_break(p):
     statement_matched : Break Semi
     """
     p[0] = Break()
+
+
+def p_continue(p):
+    """
+    statement_matched : Continue Semi
+    """
+    p[0] = Continue()
 
 
 def p_opt_expression(p):

@@ -45,7 +45,7 @@ class Namer(Visitor[ScopeStack, None]):
         func.body.accept(self, ctx)
 
     def visitBlock(self, block: Block, ctx: ScopeStack) -> None:
-        ctx.open(Scope(ScopeKind.LOCAL))
+        ctx.open()
         for child in block:
             child.accept(self, ctx)
         ctx.close()
@@ -53,15 +53,16 @@ class Namer(Visitor[ScopeStack, None]):
     def visitReturn(self, stmt: Return, ctx: ScopeStack) -> None:
         stmt.expr.accept(self, ctx)
 
-    """
-    def visitFor(self, stmt: For, ctx: Scope) -> None:
-
-    1. Open a local scope for stmt.init.
-    2. Visit stmt.init, stmt.cond, stmt.update.
-    3. Open a loop in ctx (for validity checking of break/continue)
-    4. Visit body of the loop.
-    5. Close the loop and the local scope.
-    """
+    def visitFor(self, stmt: For, ctx: ScopeStack) -> None:
+        ctx.open()
+        stmt.init.accept(self, ctx)
+        stmt.cond.accept(self, ctx)
+        stmt.update.accept(self, ctx)
+        # For validity checking of break/continue
+        ctx.enterLoop()
+        stmt.body.accept(self, ctx)
+        ctx.exitLoop()
+        ctx.close()
 
     def visitIf(self, stmt: If, ctx: ScopeStack) -> None:
         stmt.cond.accept(self, ctx)
@@ -73,23 +74,18 @@ class Namer(Visitor[ScopeStack, None]):
 
     def visitWhile(self, stmt: While, ctx: ScopeStack) -> None:
         stmt.cond.accept(self, ctx)
+        ctx.enterLoop()
         stmt.body.accept(self, ctx)
+        ctx.exitLoop()
 
     def visitBreak(self, stmt: Break, ctx: ScopeStack) -> None:
-        """
-        You need to check if it is currently within the loop.
-        To do this, you may need to check 'visitWhile'.
-
-        if not in a loop:
+        if not ctx.insideLoop():
             raise DecafBreakOutsideLoopError()
-        """
-        raise NotImplementedError
+        ctx.exitLoop()
 
-    """
-    def visitContinue(self, stmt: Continue, ctx: Scope) -> None:
-    
-    1. Refer to the implementation of visitBreak.
-    """
+    def visitContinue(self, stmt: Continue, ctx: ScopeStack) -> None:
+        if not ctx.insideLoop():
+            raise DecafContinueOutsideLoopError()
 
     def visitDeclaration(self, decl: Declaration, ctx: ScopeStack) -> None:
         if ctx.lookup(decl.ident.value):
@@ -103,8 +99,7 @@ class Namer(Visitor[ScopeStack, None]):
 
     def visitAssignment(self, expr: Assignment, ctx: ScopeStack) -> None:
         # 参考 `visitBinary` 的实现
-        expr.lhs.accept(self, ctx)
-        expr.rhs.accept(self, ctx)
+        self.visitBinary(expr, ctx)
 
     def visitUnary(self, expr: Unary, ctx: ScopeStack) -> None:
         expr.operand.accept(self, ctx)

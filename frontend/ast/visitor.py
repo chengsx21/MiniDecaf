@@ -46,7 +46,13 @@ class Visitor(Protocol[T, U]):  # type: ignore
     def visitWhile(self, that: While, ctx: T) -> Optional[U]:
         return self.visitOther(that, ctx)
 
+    def visitFor(self, that: For, ctx: T) -> Optional[U]:
+        return self.visitOther(that, ctx)
+
     def visitBreak(self, that: Break, ctx: T) -> Optional[U]:
+        return self.visitOther(that, ctx)
+    
+    def visitContinue(self, that: Continue, ctx: T) -> Optional[U]:
         return self.visitOther(that, ctx)
 
     def visitDeclaration(self, that: Declaration, ctx: T) -> Optional[U]:
@@ -59,9 +65,7 @@ class Visitor(Protocol[T, U]):  # type: ignore
         return self.visitOther(that, ctx)
 
     def visitAssignment(self, that: Assignment, ctx: T) -> Optional[U]:
-        """
-        ## ! Note that the default behavior is `visitBinary`, not `visitOther`
-        """
+        #! Note that the default behavior is `visitBinary`, not `visitOther`
         return self.visitBinary(that, ctx)
 
     def visitCondExpr(self, that: ConditionExpression, ctx: T) -> Optional[U]:
