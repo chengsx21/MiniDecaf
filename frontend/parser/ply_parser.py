@@ -43,11 +43,21 @@ def p_empty(p: yacc.YaccProduction):
     pass
 
 
+# 模仿 Block 的实现
 def p_program(p):
     """
-    program : function
+    program : program function
     """
-    p[0] = Program(p[1])
+    if p[2] is not NULL:
+        p[1].children.append(p[2])
+    p[0] = p[1]
+
+
+def p_program_empty(p):
+    """
+    program : empty
+    """
+    p[0] = Program()
 
 
 def p_type(p):
@@ -59,10 +69,40 @@ def p_type(p):
 
 def p_function_def(p):
     """
-    function : type Identifier LParen RParen LBrace block RBrace
+    function : type Identifier LParen parameter_list RParen LBrace block RBrace
     """
-    p[0] = Function(p[1], p[2], p[6])
+    p[0] = Function(p[1], p[2], p[4], p[7])
 
+
+def p_parameter_list_empty(p):
+    """
+    parameter_list : empty
+    """
+    p[0] = ParameterList()
+
+
+def p_parameter_list_single(p):
+    """
+    parameter_list : parameter
+    """
+    p[0] = ParameterList()
+    p[0].children.append(p[1])
+
+
+def p_parameter_list(p):
+    """
+    parameter_list : parameter_list Comma parameter
+    """
+    if p[3] is not NULL:
+        p[1].children.append(p[3])
+    p[0] = p[1]
+
+
+def p_function_parameter(p):
+    """
+    parameter : type Identifier
+    """
+    p[0] = Parameter(p[1], p[2])
 
 def p_block(p):
     """
@@ -196,6 +236,36 @@ def p_declaration_init(p):
     declaration : type Identifier Assign expression
     """
     p[0] = Declaration(p[1], p[2], p[4])
+
+def p_postfix(p):
+    """
+    postfix : Identifier LParen expression_list RParen
+    """
+    p[0] = Call(p[1], p[3])
+
+
+def p_expression_list_empty(p):
+    """
+    expression_list : empty
+    """
+    p[0] = ExpressionList()
+
+
+def p_expression_list_single(p):
+    """
+    expression_list : expression
+    """
+    p[0] = ExpressionList()
+    p[0].children.append(p[1])
+
+
+def p_expression_list(p):
+    """
+    expression_list : expression_list Comma expression
+    """
+    if p[3] is not NULL:
+        p[1].children.append(p[3])
+    p[0] = p[1]
 
 
 def p_expression_precedence(p):
