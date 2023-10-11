@@ -20,6 +20,7 @@ The TAC generation phase: translate the abstract syntax tree into three-address 
 """
 
 
+#! 用于生成唯一的标签
 class LabelManager:
     """
     A global label manager (just a counter).
@@ -33,7 +34,7 @@ class LabelManager:
         self.nextTempLabelId += 1
         return BlockLabel(str(self.nextTempLabelId))
 
-
+#! 从一个 AST 函数生成 TAC 指令
 class TACFuncEmitter(TACVisitor):
     """
     Translates a minidecaf (AST) function into low-level TAC function.
@@ -64,8 +65,7 @@ class TACFuncEmitter(TACVisitor):
     def getUsedTemp(self) -> int:
         return self.nextTempId
 
-    # In fact, the following methods can be named 'appendXXX' rather than 'visitXXX'.
-    # E.g., by calling 'visitAssignment', you add an assignment instruction at the end of current function.
+    # The following methods can be named 'appendXXX' to add an instruction to the current function.
     def visitAssignment(self, dst: Temp, src: Temp) -> Temp:
         self.func.add(Assign(dst, src))
         return src
@@ -167,18 +167,18 @@ class TACGen(Visitor[TACFuncEmitter, None]):
     def visitDeclaration(self, decl: Declaration, mv: TACFuncEmitter) -> None:
         decl.getattr("symbol").temp = mv.freshTemp()
         if decl.init_expr:
-            # 对子节点进行 accept
+            #! 对子节点进行 accept
             decl.init_expr.accept(self, mv)
-            # 模仿 `visitAssignment` 函数进行赋值
+            #! 模仿 `visitAssignment` 函数进行赋值
             decl.setattr(
                 "val", mv.visitAssignment(decl.getattr("symbol").temp, decl.init_expr.getattr("val"))
             )            
 
     def visitAssignment(self, expr: Assignment, mv: TACFuncEmitter) -> None:
-        # 对子节点进行 accept
+        #! 对子节点进行 accept
         expr.lhs.accept(self, mv)
         expr.rhs.accept(self, mv)
-        # 设置返回值为赋值指令的返回值, 赋值操作更新左值, 左端项是左值 temp
+        #! 设置返回值为赋值指令的返回值, 赋值操作更新左值, 左端项是左值 temp
         expr.setattr(
             "val", mv.visitAssignment(expr.lhs.getattr("symbol").temp, expr.rhs.getattr("val"))
         )
@@ -229,6 +229,7 @@ class TACGen(Visitor[TACFuncEmitter, None]):
 
         stmt.init.accept(self, mv)
         mv.visitLabel(beginLabel)
+        #! cond 可能为空
         if stmt.cond:
             stmt.cond.accept(self, mv)
             mv.visitCondBranch(tacop.CondBranchOp.BEQ, stmt.cond.getattr("val"), breakLabel)

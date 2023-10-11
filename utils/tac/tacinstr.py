@@ -38,6 +38,7 @@ class TACInstr:
     def isReturn(self) -> bool:
         return self.kind == InstrKind.RET
 
+    #! 将 TACInstr 转换为 NativeInstr, 用于输出汇编指令
     def toNative(self, dstRegs: list[Reg], srcRegs: list[Reg]) -> NativeInstr:
         oldDsts = dstRegs
         oldSrcs = srcRegs
