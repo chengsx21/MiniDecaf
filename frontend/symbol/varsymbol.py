@@ -7,6 +7,7 @@ Variable symbol, representing a variable definition.
 """
 
 
+#! 记录 variable 类型
 class VarSymbol(Symbol):
     def __init__(self, name: str, type: DecafType, isGlobal: bool = False) -> None:
         super().__init__(name, type)

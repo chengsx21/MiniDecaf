@@ -54,15 +54,11 @@ class BinaryOp(Operator):
     """
 
     Assign = "="
-
     LogicOr = "||"
-
     LogicAnd = "&&"
 
     BitOr = "|"
-
     Xor = "^"
-
     BitAnd = "&"
 
     EQ = "=="
@@ -130,12 +126,12 @@ class Node(ABC):
         Get additional information on AST node.
         Note that the default return value is `None` when the given name is not present.
         """
-        return self._attrs.get(name, None)
+        return self._attrs.get(name, None) #! 默认返回 None
 
     def __iter__(self):
         """Iterates its children."""
         for i in range(0, len(self)):
-            yield self[i]
+            yield self[i] #! 返回一个生成器对象
 
     def __bool__(self):
         """

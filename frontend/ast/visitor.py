@@ -14,10 +14,8 @@ T = TypeVar("T", covariant=True)
 U = TypeVar("U", covariant=True)
 
 
+#! 工厂函数, visitor 表示访问者对象, ctx 表示上下文信息.
 def accept(visitor: Visitor[T, U], ctx: T) -> Callable[[Node], Optional[U]]:
-    '''
-        工厂函数, visitor 表示访问者对象, ctx 表示上下文信息.
-    '''
     return lambda node: node.accept(visitor, ctx)
 
 
@@ -64,8 +62,8 @@ class Visitor(Protocol[T, U]):  # type: ignore
     def visitBinary(self, that: Binary, ctx: T) -> Optional[U]:
         return self.visitOther(that, ctx)
 
+    #! Note that the default behavior is `visitBinary`, not `visitOther`    
     def visitAssignment(self, that: Assignment, ctx: T) -> Optional[U]:
-        #! Note that the default behavior is `visitBinary`, not `visitOther`
         return self.visitBinary(that, ctx)
 
     def visitCondExpr(self, that: ConditionExpression, ctx: T) -> Optional[U]:

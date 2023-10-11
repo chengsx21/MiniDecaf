@@ -11,6 +11,7 @@ Symbols are stored in the symbol table of a scope and referred by other expressi
 """
 
 
+#! 抽象基类, 不会被实例化
 class Symbol(ABC):
     def __init__(self, name: str, type: DecafType) -> None:
         self.name = name

@@ -26,7 +26,6 @@ class Namer(Visitor[ScopeStack, None]):
 
     # Entry of this phase
     def transform(self, program: Program) -> Program:
-        # Global scope. You don't have to consider it until Step 6.
         program.globalScope = GlobalScope
         ctx = ScopeStack(program.globalScope)
 
@@ -34,7 +33,7 @@ class Namer(Visitor[ScopeStack, None]):
         return program
 
     def visitProgram(self, program: Program, ctx: ScopeStack) -> None:
-        # Check if the 'main' function is missing
+        #! Check if the 'main' function is missing
         if not program.hasMainFunc():
             raise DecafNoMainFuncError
 
@@ -58,7 +57,7 @@ class Namer(Visitor[ScopeStack, None]):
         stmt.init.accept(self, ctx)
         stmt.cond.accept(self, ctx)
         stmt.update.accept(self, ctx)
-        # For validity checking of break/continue
+        #! check the validity of `Break` or `Continue`
         ctx.enterLoop()
         stmt.body.accept(self, ctx)
         ctx.exitLoop()
@@ -88,9 +87,10 @@ class Namer(Visitor[ScopeStack, None]):
             raise DecafContinueOutsideLoopError()
 
     def visitDeclaration(self, decl: Declaration, ctx: ScopeStack) -> None:
+        #! decl.ident.value 是变量名字符串
         if ctx.lookup(decl.ident.value):
             raise DecafDeclConflictError(decl.ident.value)
-        # 构造 VarSymbol 对象, 将其加入符号表, 并设置 decl 的 symbol 属性
+        #! 构造 VarSymbol, 加入符号表, 设置 Declaration 的 symbol 属性
         symbol = VarSymbol(decl.ident.value, decl.var_t.type)
         ctx.declare(symbol)
         decl.setattr("symbol", symbol)
@@ -98,7 +98,6 @@ class Namer(Visitor[ScopeStack, None]):
             decl.init_expr.accept(self, ctx)
 
     def visitAssignment(self, expr: Assignment, ctx: ScopeStack) -> None:
-        # 参考 `visitBinary` 的实现
         self.visitBinary(expr, ctx)
 
     def visitUnary(self, expr: Unary, ctx: ScopeStack) -> None:
@@ -117,7 +116,6 @@ class Namer(Visitor[ScopeStack, None]):
         symbol = ctx.lookupOverStack(ident.value)
         if not symbol:
             raise DecafUndefinedVarError(ident.value)
-        # 设置 ident 的 symbol 属性
         ident.setattr("symbol", symbol)
 
     def visitIntLiteral(self, expr: IntLiteral, ctx: ScopeStack) -> None:

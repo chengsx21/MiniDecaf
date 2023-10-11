@@ -9,6 +9,7 @@ Function symbol, representing a function definition.
 """
 
 
+#! 继承自 Symbol, 记录 function 类型
 class FuncSymbol(Symbol):
     def __init__(self, name: str, type: DecafType, scope: Scope) -> None:
         super().__init__(name, type)

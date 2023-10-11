@@ -95,7 +95,7 @@ class Function(Node):
     def accept(self, v: Visitor[T, U], ctx: T):
         return v.visitFunction(self, ctx)
 
-
+#! 语句, 无返回值
 class Statement(Node):
     """
     Abstract type that represents a statement.
@@ -178,7 +178,7 @@ class For(Statement):
     """
 
     def __init__(
-        self, init: Expression, cond: Expression, update: Expression, body: Statement
+        self, init: Union["Expression", "Declaration"], cond: Expression, update: Expression, body: Statement
     ) -> None:
         super().__init__("for")
         self.init = init
@@ -279,6 +279,7 @@ class Declaration(Node):
         return v.visitDeclaration(self, ctx)
 
 
+#! 表达式, 有返回值
 class Expression(Node):
     """
     Abstract type that represents an evaluable expression.

@@ -1,6 +1,6 @@
 from frontend.ast.node import Node
 
-
+#! 打印 AST 结构
 class TreePrinter:
     l = "["
     r = "]"
