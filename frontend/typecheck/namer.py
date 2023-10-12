@@ -37,17 +37,55 @@ class Namer(Visitor[ScopeStack, None]):
         if not program.hasMainFunc():
             raise DecafNoMainFuncError
 
-        for func in program.functions().values():
+        for func in program.children:
             func.accept(self, ctx)
 
     def visitFunction(self, func: Function, ctx: ScopeStack) -> None:
-        func.body.accept(self, ctx)
+        if GlobalScope.lookup(func.ident.value):
+            raise DecafDeclConflictError(func.ident.value)
+        symbol = FuncSymbol(func.ident.value, func.ret_t.type, GlobalScope)
+        for param in func.params.children:
+            symbol.addParaType(param.var_t)
+        GlobalScope.declare(symbol)
+        func.setattr('symbol', symbol)
+
+        ctx.open()
+        func.params.accept(self, ctx)
+        for child in func.body.children:
+            child.accept(self, ctx)
+        ctx.close()
 
     def visitBlock(self, block: Block, ctx: ScopeStack) -> None:
         ctx.open()
         for child in block:
             child.accept(self, ctx)
         ctx.close()
+
+    def visitParameter(self, param: Parameter, ctx: ScopeStack) -> None:
+        if ctx.lookup(param.ident.value):
+            raise DecafDeclConflictError(param.ident.value)
+        symbol = VarSymbol(param.ident.value, param.var_t.type)
+        ctx.declare(symbol)
+        param.setattr("symbol", symbol)
+
+    def visitParameterList(self, params: ParameterList, ctx: ScopeStack) -> None:
+        for param in params.children:
+            param.accept(self, ctx)
+
+    def visitExpressionList(self, exprs: ExpressionList, ctx: ScopeStack) -> None:
+        for expr in exprs.children:
+            expr.accept(self, ctx)
+
+    def visitCall(self, call: Call, ctx: ScopeStack) -> None:
+        func = GlobalScope.lookup(call.ident.value)
+        if not func or not func.isFunc:
+            raise DecafUndefinedFuncError(call.ident.value)
+        if func.parameterNum != len(call.args):
+            raise DecafBadFuncCallError()
+
+        call.ident.setattr('symbol', func)
+        for arg in call.args:
+            arg.accept(self, ctx)
 
     def visitReturn(self, stmt: Return, ctx: ScopeStack) -> None:
         stmt.expr.accept(self, ctx)

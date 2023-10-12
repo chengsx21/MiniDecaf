@@ -25,6 +25,12 @@ class TACVisitor:
    def visitCondBranch(self, instr: CondBranch) -> None:
         self.visitOther(instr)
 
+   def visitParam(self, instr: Param) -> None:
+        self.visitOther(instr)
+
+   def visitCall(self, instr: Call) -> None:
+        self.visitOther(instr)
+
    def visitReturn(self, instr: Return) -> None:
         self.visitOther(instr)
 

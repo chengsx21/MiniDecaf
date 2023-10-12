@@ -97,6 +97,14 @@ class TACFuncEmitter(TACVisitor):
     def visitCondBranch(self, op: CondBranchOp, cond: Temp, target: Label) -> None:
         self.func.add(CondBranch(op, cond, target))
 
+    def visitParam(self, value: Temp) -> None:
+        self.func.add(Param(value))
+
+    def visitCall(self, label: Label) -> Temp:
+        temp = self.freshTemp()
+        self.func.add(Call(temp, label))
+        return temp
+
     def visitReturn(self, value: Optional[Temp]) -> None:
         self.func.add(Return(value))
 
@@ -141,7 +149,9 @@ class TACGen(Visitor[TACFuncEmitter, None]):
         tacFuncs = []
         for funcName, astFunc in program.functions().items():
             # in step9, you need to use real parameter count
-            emitter = TACFuncEmitter(FuncLabel(funcName), 0, labelManager)
+            emitter = TACFuncEmitter(FuncLabel(funcName), len(astFunc.params.children), labelManager)
+            for child in astFunc.params.children:
+                child.accept(self, emitter)
             astFunc.body.accept(self, emitter)
             tacFuncs.append(emitter.visitEnd())
         return TACProg(tacFuncs)
@@ -149,6 +159,16 @@ class TACGen(Visitor[TACFuncEmitter, None]):
     def visitBlock(self, block: Block, mv: TACFuncEmitter) -> None:
         for child in block:
             child.accept(self, mv)
+
+    def visitParameter(self, param: Parameter, mv: TACFuncEmitter) -> None:
+        param.getattr('symbol').temp = mv.freshTemp()
+
+    def visitCall(self, call: Call, mv: TACFuncEmitter) -> None:
+        for arg in call.args.children:
+            arg.accept(self, mv)
+        for arg in call.args.children:
+            mv.visitParam(arg.getattr("val"))
+        call.setattr('val', mv.visitCall(FuncLabel(call.ident.value)))
 
     def visitReturn(self, stmt: Return, mv: TACFuncEmitter) -> None:
         stmt.expr.accept(self, mv)

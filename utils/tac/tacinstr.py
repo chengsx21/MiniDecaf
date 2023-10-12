@@ -165,6 +165,33 @@ class CondBranch(TACInstr):
         v.visitCondBranch(self)
 
 
+# Function parameter.
+class Param(TACInstr):
+    def __init__(self, param: Temp) -> None:
+        super().__init__(InstrKind.PARAM, [], [param], None)
+        self.param = param
+
+    def __str__(self) -> str:
+        return "PARAM " + str(self.param)
+
+    def accept(self, v: TACVisitor) -> None:
+        v.visitParam(self)
+
+
+# Call instruction.
+class Call(TACInstr):
+    def __init__(self, param: Temp, label: Label) -> None:
+        super().__init__(InstrKind.CALL, [param], [], label)
+        self.param = param
+        self.label = label
+
+    def __str__(self) -> str:
+        return str(self.param) + " = CALL %s" % str(self.label)
+
+    def accept(self, v: TACVisitor) -> None:
+        v.visitCall(self)
+
+
 # Return instruction.
 class Return(TACInstr):
     def __init__(self, value: Optional[Temp]) -> None:

@@ -14,6 +14,10 @@ class InstrKind(Enum):
     COND_JMP = auto()
     # Return instruction.
     RET = auto()
+    # Function call.
+    CALL = auto()
+    # Function parameter.
+    PARAM = auto()
 
 
 # Kinds of unary operations.
