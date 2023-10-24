@@ -35,7 +35,7 @@ class Namer(Visitor[ScopeStack, None]):
     def visitProgram(self, program: Program, ctx: ScopeStack) -> None:
         #! Check if the 'main' function is missing
         if not program.hasMainFunc():
-            raise DecafNoMainFuncError
+            raise DecafNoMainFuncError()
 
         for func in program.children:
             func.accept(self, ctx)
@@ -77,11 +77,14 @@ class Namer(Visitor[ScopeStack, None]):
             expr.accept(self, ctx)
 
     def visitCall(self, call: Call, ctx: ScopeStack) -> None:
+        if ctx.lookup(call.ident.value):
+            raise DecafBadFuncCallError(call.ident.value)
+
         func = GlobalScope.lookup(call.ident.value)
         if not func or not func.isFunc:
             raise DecafUndefinedFuncError(call.ident.value)
         if func.parameterNum != len(call.args):
-            raise DecafBadFuncCallError()
+            raise DecafBadFuncCallError(call.ident.value)
 
         call.ident.setattr('symbol', func)
         for arg in call.args:

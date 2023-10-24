@@ -17,6 +17,7 @@ emitEnd: output all the asm code for the function
 """
 
 
+#! RISC-V 汇编子函数生成器
 class SubroutineEmitter(ABC):
     def __init__(self, emitter: AsmEmitter, info: SubroutineInfo) -> None:
         self.info = info
@@ -24,6 +25,14 @@ class SubroutineEmitter(ABC):
 
     @abstractmethod
     def emitComment(self, comment: str) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def emitStoreParamToStack(self, src:Temp, index: int):
+        raise NotImplementedError
+
+    @abstractmethod
+    def emitLoadParamFromStack(self, dst: Reg, index: int):
         raise NotImplementedError
 
     @abstractmethod
@@ -40,6 +49,14 @@ class SubroutineEmitter(ABC):
 
     @abstractmethod
     def emitLabel(self, label: Label):
+        raise NotImplementedError
+
+    @abstractmethod
+    def emitReg(self, dst: Reg, src: Temp):
+        raise NotImplementedError
+
+    @abstractmethod
+    def emitRestoreStackPointer(self, offset: int):
         raise NotImplementedError
 
     @abstractmethod

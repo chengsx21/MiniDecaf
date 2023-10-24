@@ -18,6 +18,7 @@ allocatableRegs: all the regs that can used in reg alloc
 """
 
 
+#! RISC-V 汇编代码生成器
 class AsmEmitter(ABC):
     def __init__(self, allocatableRegs: list[Reg], callerSaveRegs: list[Reg]) -> None:
         self.allocatableRegs = allocatableRegs

@@ -6,8 +6,9 @@ SubroutineInfo: collect some info when selecting instr which will be used in Sub
 
 
 class SubroutineInfo:
-    def __init__(self, funcLabel: FuncLabel) -> None:
+    def __init__(self, funcLabel: FuncLabel, numArgs: int) -> None:
         self.funcLabel = funcLabel
+        self.numArgs = numArgs
 
     def __str__(self) -> str:
         return "funcLabel: {}".format(

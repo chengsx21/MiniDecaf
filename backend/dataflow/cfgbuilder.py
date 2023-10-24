@@ -17,6 +17,7 @@ class CFGBuilder:
         self.currentBBLabel = None
         self.labelsToBBs = {}
 
+    #! 根据 TAC 指令序列构建 CFG
     def buildFrom(self, seq: list[TACInstr]):
         for item in seq:
             if item.isLabel():
@@ -60,6 +61,7 @@ class CFGBuilder:
                     edges.append((bb.id, bb.id + 1))
             elif bb.kind is BlockKind.END_BY_RETURN:
                 pass
+            #! 对于 SEQ, PARAM 和 CALL, 会自动跳转到下一个 BB
             else:
                 if now < len(self.bbs):
                     edges.append((bb.id, bb.id + 1))

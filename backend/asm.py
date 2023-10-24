@@ -9,6 +9,7 @@ from utils.tac.tacprog import TACProg
 Asm: we use it to generate all the asm code for the program
 """
 
+#! RISC-V 汇编「程序」代码生成器
 class Asm:
     def __init__(self, emitter: RiscvAsmEmitter, regAlloc: BruteRegAlloc) -> None:
         self.emitter = emitter

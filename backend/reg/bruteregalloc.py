@@ -10,6 +10,8 @@ from backend.subroutineinfo import SubroutineInfo
 from utils.riscv import Riscv
 from utils.tac.reg import Reg
 from utils.tac.temp import Temp
+from utils.tac.tacop import InstrKind
+from utils.tac.tacinstr import TACInstr
 
 """
 BruteRegAlloc: one kind of RegAlloc
@@ -31,11 +33,21 @@ class BruteRegAlloc(RegAlloc):
     def __init__(self, emitter: RiscvAsmEmitter) -> None:
         super().__init__(emitter)
         self.bindings = {}
+        self.maxNumParams = 8
         for reg in emitter.allocatableRegs:
+            # reg.used == True 表示寄存器曾被分配, 包含一个数值
             reg.used = False
 
     def accept(self, graph: CFG, info: SubroutineInfo) -> None:
+        self.functionParams = []
+        self.callerSavedRegs = {}
         subEmitter = self.emitter.emitSubroutine(info)
+
+        # 为参数分配寄存器
+        for index in range(min(info.numArgs, self.maxNumParams)):
+            self.bind(Temp(index), Riscv.ArgRegs[index])
+            subEmitter.emitStoreToStack(Riscv.ArgRegs[index])
+
         for (index, bb) in enumerate(graph.iterator()):
             if bb.label is not None:
                 subEmitter.emitLabel(bb.label)
@@ -53,6 +65,9 @@ class BruteRegAlloc(RegAlloc):
         if temp.index in self.bindings:
             self.bindings[temp.index].occupied = False
             self.bindings.pop(temp.index)
+
+    def callerParamCount(self):
+        return len(self.functionParams)
 
     def localAlloc(self, bb: BasicBlock, subEmitter: SubroutineEmitter):
         self.bindings.clear()
@@ -91,11 +106,50 @@ class BruteRegAlloc(RegAlloc):
             else:
                 dstRegs.append(self.allocRegFor(temp, False, loc.liveIn, subEmitter))
 
-        subEmitter.emitNative(instr.toNative(dstRegs, srcRegs))
+        if instr.kind == InstrKind.PARAM:
+            self.allocForParam(instr, srcRegs, subEmitter)
+        elif instr.kind == InstrKind.CALL:
+            self.allocForCall(instr, srcRegs, dstRegs, subEmitter)
+        else:
+            subEmitter.emitNative(instr.toNative(dstRegs, srcRegs))
 
-    def allocRegFor(
-        self, temp: Temp, isRead: bool, live: set[int], subEmitter: SubroutineEmitter
-    ):
+    def allocForParam(self, instr: TACInstr, srcRegs: list[Reg], subEmitter: SubroutineEmitter):
+        # 保存前八个参数到寄存器中
+        if self.callerParamCount() < self.maxNumParams:
+            reg = Riscv.ArgRegs[self.callerParamCount()]
+            # 将寄存器解绑, 稍后恢复
+            if reg.occupied:
+                subEmitter.emitStoreToStack(reg)
+                self.callerSavedRegs[reg] = reg.temp
+                self.unbind(reg.temp)
+            subEmitter.emitReg(reg, srcRegs[0])
+        self.functionParams.append(instr.srcs[0])
+
+    def allocForCall(self, instr: TACInstr, srcRegs: list[Reg], dstRegs: list[Reg], subEmitter: SubroutineEmitter):
+        # 调用前保存 caller-saved 寄存器
+        for reg in Riscv.CallerSaved:
+            if reg.occupied:
+                subEmitter.emitStoreToStack(reg)
+                self.callerSavedRegs[reg] = reg.temp
+                self.unbind(reg.temp)
+
+        # 保存多余的参数到栈中
+        if self.callerParamCount() > self.maxNumParams:
+            for (index, temp) in enumerate(self.functionParams[self.maxNumParams:][::-1]):
+                subEmitter.emitStoreParamToStack(temp, index)
+            subEmitter.emitNative(instr.toNative(dstRegs, srcRegs))
+            subEmitter.emitRestoreStackPointer(4 * (self.callerParamCount() - self.maxNumParams))
+        else:
+            subEmitter.emitNative(instr.toNative(dstRegs, srcRegs))
+        self.functionParams = []
+
+        # 调用后恢复 caller-saved 寄存器
+        for reg, temp in self.callerSavedRegs.items():
+            self.bind(temp, reg)
+            subEmitter.emitLoadFromStack(reg, temp)
+        self.callerSavedRegs = {}
+
+    def allocRegFor(self, temp: Temp, isRead: bool, live: set[int], subEmitter: SubroutineEmitter):
         if temp.index in self.bindings:
             return self.bindings[temp.index]
 

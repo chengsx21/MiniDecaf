@@ -142,7 +142,19 @@ class Riscv:
             return "{} ".format(self.op) + Riscv.FMT3.format(
                 str(self.dsts[0]), str(self.srcs[0]), str(self.srcs[1])
             )
-    
+
+    class Call(TACInstr):
+        def __init__(self, target: Label) -> None:
+            super().__init__(InstrKind.CALL, [], [], target)
+            self.target = target
+
+        def __str__(self) -> str:
+            return "call " + super(FuncLabel, self.target).__str__()
+
+    class Param(TACInstr):
+        def __init__(self, src: Temp) -> None:
+            super().__init__(InstrKind.PARAM, [], [src], None)
+
     class Branch(TACInstr):
         def __init__(self, cond: Temp, target: Label) -> None:
             super().__init__(InstrKind.COND_JMP, [], [cond], target)
@@ -168,6 +180,17 @@ class Riscv:
             assert -2048 <= self.offset <= 2047  # Riscv imm [11:0]
             return "addi " + Riscv.FMT3.format(
                 str(Riscv.SP), str(Riscv.SP), str(self.offset)
+            )
+
+    class FPAdd(NativeInstr):
+        def __init__(self, offset: int) -> None:
+            super().__init__(InstrKind.SEQ, [Riscv.FP], [Riscv.SP], None)
+            self.offset = offset
+
+        def __str__(self) -> str:
+            assert -2048 <= self.offset <= 2047  # Riscv imm [11:0]
+            return "addi " + Riscv.FMT3.format(
+                str(Riscv.FP), str(Riscv.SP), str(self.offset)
             )
 
     class NativeStoreWord(NativeInstr):
