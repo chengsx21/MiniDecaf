@@ -39,12 +39,13 @@ class BruteRegAlloc(RegAlloc):
             reg.used = False
 
     def accept(self, graph: CFG, info: SubroutineInfo) -> None:
+        self.numArgs = info.numArgs
         self.functionParams = []
         self.callerSavedRegs = {}
         subEmitter = self.emitter.emitSubroutine(info)
 
-        # 为参数分配寄存器
-        for index in range(min(info.numArgs, self.maxNumParams)):
+        # 为寄存器参数分配寄存器
+        for index in range(min(self.numArgs, self.maxNumParams)):
             self.bind(Temp(index), Riscv.ArgRegs[index])
             subEmitter.emitStoreToStack(Riscv.ArgRegs[index])
 
@@ -145,8 +146,10 @@ class BruteRegAlloc(RegAlloc):
 
         # 调用后恢复 caller-saved 寄存器
         for reg, temp in self.callerSavedRegs.items():
-            self.bind(temp, reg)
-            subEmitter.emitLoadFromStack(reg, temp)
+            # 返回值寄存器不需要恢复, 否则会覆盖
+            if reg != Riscv.A0:
+                self.bind(temp, reg)
+                subEmitter.emitLoadFromStack(reg, temp)
         self.callerSavedRegs = {}
 
     def allocRegFor(self, temp: Temp, isRead: bool, live: set[int], subEmitter: SubroutineEmitter):
@@ -161,7 +164,12 @@ class BruteRegAlloc(RegAlloc):
                     )
                 )
                 if isRead:
-                    subEmitter.emitLoadFromStack(reg, temp)
+                    # 如果是存储在栈上的参数, 利用 FP 从栈中加载
+                    if (self.maxNumParams <= temp.index < self.numArgs):
+                        subEmitter.emitLoadParamFromStack(reg, temp.index)
+                    # 否则, 利用 SP 从栈中加载
+                    else:
+                        subEmitter.emitLoadFromStack(reg, temp)
                 if reg.occupied:
                     self.unbind(reg.temp)
                 self.bind(temp, reg)
