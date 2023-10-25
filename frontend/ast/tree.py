@@ -45,16 +45,19 @@ class ListNode(Node, Generic[_T]):
         return None if ret.count(None) == len(ret) else ret
 
 
-class Program(ListNode["Function"]):
+class Program(ListNode[Union["Function", "Declaration"]]):
     """
     AST root. It should have only one children before step9.
     """
 
-    def __init__(self, *children: Function) -> None:
+    def __init__(self, *children: Union[Function, Declaration]) -> None:
         super().__init__("program", list(children))
 
     def functions(self) -> dict[str, Function]:
         return {func.ident.value: func for func in self if isinstance(func, Function)}
+
+    def globalVars(self) -> dict[str, Declaration]:
+        return {decl.ident.value: decl.getattr('symbol').initValue for decl in self if isinstance(decl, Declaration)}
 
     def hasMainFunc(self) -> bool:
         return "main" in self.functions()

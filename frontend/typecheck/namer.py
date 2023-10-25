@@ -133,6 +133,10 @@ class Namer(Visitor[ScopeStack, None]):
             raise DecafDeclConflictError(decl.ident.value)
         #! 构造 VarSymbol, 加入符号表, 设置 Declaration 的 symbol 属性
         symbol = VarSymbol(decl.ident.value, decl.var_t.type)
+        if ctx.isGlobalScope():
+            symbol.isGlobal = True
+            if decl.init_expr:
+                symbol.initValue = decl.init_expr.value
         ctx.declare(symbol)
         decl.setattr("symbol", symbol)
         if decl.init_expr:

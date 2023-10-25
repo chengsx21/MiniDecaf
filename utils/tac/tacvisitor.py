@@ -34,6 +34,15 @@ class TACVisitor:
    def visitReturn(self, instr: Return) -> None:
         self.visitOther(instr)
 
+   def visitLoadAddress(self, instr: LoadAddress) -> None:
+        self.visitOther(instr)
+
+   def visitLoadIntLiteral(self, instr: LoadIntLiteral) -> None:
+        self.visitOther(instr)
+
+   def visitStoreIntLiteral(self, instr: StoreIntLiteral) -> None:
+        self.visitOther(instr)
+
    def visitMemo(self, instr: Memo) -> None:
         self.visitOther(instr)
 

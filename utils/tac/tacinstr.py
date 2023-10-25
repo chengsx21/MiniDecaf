@@ -208,6 +208,45 @@ class Return(TACInstr):
         v.visitReturn(self)
 
 
+# Load Address instruction.
+class LoadAddress(TACInstr):
+    def __init__(self, symbol, dst: Temp):
+        super().__init__(InstrKind.SEQ, [dst], [], None)
+        self.symbol = symbol
+
+    def __str__(self) -> str:
+        return "%s = LOAD_SYMBOL %s" % (self.dsts[0], self.symbol.name)
+
+    def accept(self, v: TACVisitor) -> None:
+        return v.visitLoadAddress(self)
+
+
+# Load Word instruction.
+class LoadIntLiteral(TACInstr):
+    def __init__(self, dst: Temp, base: Temp, offset: int):
+        super().__init__(InstrKind.SEQ, [dst], [base], None)
+        self.offset = offset
+
+    def __str__(self) -> str:
+        return "%s = LOAD %s, %d" % (self.dsts[0], self.srcs[0], self.offset)
+
+    def accept(self, v: TACVisitor) -> None:
+        return v.visitLoadIntLiteral(self)
+
+
+# Store Word instruction.
+class StoreIntLiteral(TACInstr):
+    def __init__(self, src: Temp, base: Temp, offset: int):
+        super().__init__(InstrKind.SEQ, [], [src, base], None)
+        self.offset = offset
+
+    def __str__(self) -> str:
+        return "STORE %s %s, %d" % (self.srcs[0], self.srcs[1], self.offset)
+
+    def accept(self, v: TACVisitor) -> None:
+        return v.visitStoreIntLiteral(self)
+
+
 # Annotation (used for debugging).
 class Memo(TACInstr):
     def __init__(self, msg: str) -> None:

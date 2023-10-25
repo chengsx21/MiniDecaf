@@ -111,6 +111,17 @@ class TACFuncEmitter(TACVisitor):
     def visitLabel(self, label: Label) -> None:
         self.func.add(Mark(label))
 
+    def visitLoadIntLiteral(self, symbol: VarSymbol) -> Temp:
+        addr = self.freshTemp()
+        self.func.add(LoadAddress(symbol, addr))
+        self.func.add(LoadIntLiteral(addr, addr, 0))
+        return addr
+
+    def visitStoreIntLiteral(self, symbol: VarSymbol, value: Temp) -> None:
+        addr = self.freshTemp()
+        self.func.add(LoadAddress(symbol, addr))
+        self.func.add(StoreIntLiteral(value, addr, 0))
+
     def visitMemo(self, content: str) -> None:
         self.func.add(Memo(content))
 
@@ -147,6 +158,7 @@ class TACGen(Visitor[TACFuncEmitter, None]):
     def transform(self, program: Program) -> TACProg:
         labelManager = LabelManager()
         tacFuncs = []
+        globalVars = program.globalVars()
         for funcName, astFunc in program.functions().items():
             # in step9, you need to use real parameter count
             emitter = TACFuncEmitter(FuncLabel(funcName), len(astFunc.params.children), labelManager)
@@ -154,7 +166,7 @@ class TACGen(Visitor[TACFuncEmitter, None]):
                 child.accept(self, emitter)
             astFunc.body.accept(self, emitter)
             tacFuncs.append(emitter.visitEnd())
-        return TACProg(tacFuncs)
+        return TACProg(tacFuncs, globalVars)
 
     def visitBlock(self, block: Block, mv: TACFuncEmitter) -> None:
         for child in block:
@@ -181,8 +193,11 @@ class TACGen(Visitor[TACFuncEmitter, None]):
         mv.visitBranch(mv.getContinueLabel())
 
     def visitIdentifier(self, ident: Identifier, mv: TACFuncEmitter) -> None:
+        if ident.getattr("symbol").isGlobal:
+            ident.setattr('val', mv.visitLoadIntLiteral(ident.getattr('symbol')))
+        else:
+            ident.setattr('val', ident.getattr('symbol').temp)
         # 设置返回值为标识符对应的 temp 寄存器
-        ident.setattr("val", ident.getattr("symbol").temp)
 
     def visitDeclaration(self, decl: Declaration, mv: TACFuncEmitter) -> None:
         decl.getattr("symbol").temp = mv.freshTemp()
@@ -195,13 +210,17 @@ class TACGen(Visitor[TACFuncEmitter, None]):
             )            
 
     def visitAssignment(self, expr: Assignment, mv: TACFuncEmitter) -> None:
-        #! 对子节点进行 accept
-        expr.lhs.accept(self, mv)
+        #! 对右值进行 accept
         expr.rhs.accept(self, mv)
-        #! 设置返回值为赋值指令的返回值, 赋值操作更新左值, 左端项是左值 temp
-        expr.setattr(
-            "val", mv.visitAssignment(expr.lhs.getattr("symbol").temp, expr.rhs.getattr("val"))
-        )
+        #! 左值是全局变量
+        if expr.lhs.getattr('symbol').isGlobal:
+            mv.visitStoreIntLiteral(expr.lhs.getattr('symbol'), expr.rhs.getattr("val"))
+        else:
+            expr.lhs.accept(self, mv)
+            #! 设置返回值为赋值指令的返回值, 赋值操作更新左值, 左端项是左值 temp
+            expr.setattr(
+                "val", mv.visitAssignment(expr.lhs.getattr("symbol").temp, expr.rhs.getattr("val"))
+            )
 
     def visitIf(self, stmt: If, mv: TACFuncEmitter) -> None:
         stmt.cond.accept(self, mv)

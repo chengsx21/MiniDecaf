@@ -47,6 +47,7 @@ def p_empty(p: yacc.YaccProduction):
 def p_program(p):
     """
     program : program function
+        | program declaration Semi
     """
     if p[2] is not NULL:
         p[1].children.append(p[2])
