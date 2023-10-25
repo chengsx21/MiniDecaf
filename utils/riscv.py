@@ -221,3 +221,35 @@ class Riscv:
 
         def __str__(self) -> str:
             return "ret"
+
+    class LoadAddress(TACInstr):
+        def __init__(self, symbol: str, dst: Temp) -> None:
+            super().__init__(InstrKind.SEQ, [dst], [], None)
+            self.symbol = symbol
+
+        def __str__(self) -> str:
+            return "la " + Riscv.FMT2.format(
+                str(self.dsts[0]), self.symbol
+            )
+
+    class LoadIntLiteral(TACInstr):
+        def __init__(self, dst: Temp, base: Temp, offset: int) -> None:
+            super().__init__(InstrKind.SEQ, [dst], [base], None)
+            self.offset = offset
+
+        def __str__(self) -> str:
+            assert -2048 <= self.offset <= 2047  # Riscv imm [11:0]
+            return "lw " + Riscv.FMT_OFFSET.format(
+                str(self.dsts[0]), str(self.offset), str(self.srcs[0])
+            )
+
+    class StoreIntLiteral(TACInstr):
+        def __init__(self, src: Temp, base: Temp, offset: int) -> None:
+            super().__init__(InstrKind.SEQ, [], [src, base], None)
+            self.offset = offset
+
+        def __str__(self) -> str:
+            assert -2048 <= self.offset <= 2047  # Riscv imm [11:0]
+            return "sw " + Riscv.FMT_OFFSET.format(
+                str(self.srcs[0]), str(self.offset), str(self.srcs[1])
+            )

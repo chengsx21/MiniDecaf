@@ -23,9 +23,13 @@ class RiscvAsmEmitter(AsmEmitter):
         self,
         allocatableRegs: list[Reg],
         callerSaveRegs: list[Reg],
+        globalVars: dict[str, int],
     ) -> None:
         super().__init__(allocatableRegs, callerSaveRegs)
 
+        self.printer.println(".data")
+        for symbol, value in globalVars.items():
+            self.printer.printGlobalVar(symbol, value)
     
         # the start of the asm code
         # int step10, you need to add the declaration of global var here
@@ -75,6 +79,15 @@ class RiscvAsmEmitter(AsmEmitter):
             else:
                 self.seq.append(Riscv.LoadImm(Riscv.A0, 0))
             self.seq.append(Riscv.JumpToEpilogue(self.entry))
+
+        def visitLoadAddress(self, instr: LoadAddress) -> None:
+            self.seq.append(Riscv.LoadAddress(instr.symbol.name, instr.dsts[0]))
+
+        def visitLoadIntLiteral(self, instr: LoadIntLiteral) -> None:
+            self.seq.append(Riscv.LoadIntLiteral(instr.dsts[0], instr.srcs[0], instr.offset)) 
+
+        def visitStoreIntLiteral(self, instr: StoreIntLiteral) -> None:
+            self.seq.append(Riscv.StoreIntLiteral(instr.srcs[0], instr.srcs[1], instr.offset))
 
         def visitMark(self, instr: Mark) -> None:
             self.seq.append(Riscv.RiscvLabel(instr.label))
