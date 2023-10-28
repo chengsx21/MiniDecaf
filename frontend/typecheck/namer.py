@@ -22,7 +22,7 @@ syntax tree and store them in symbol tables (i.e. scopes).
 
 class Namer(Visitor[ScopeStack, None]):
     def __init__(self) -> None:
-        pass
+        self.arrays = []
 
     # Entry of this phase
     def transform(self, program: Program) -> Program:
@@ -50,9 +50,11 @@ class Namer(Visitor[ScopeStack, None]):
         func.setattr('symbol', symbol)
 
         ctx.open()
+        self.arrays = []
         func.params.accept(self, ctx)
         for child in func.body.children:
             child.accept(self, ctx)
+        func.arrays = self.arrays
         ctx.close()
 
     def visitBlock(self, block: Block, ctx: ScopeStack) -> None:
@@ -131,8 +133,13 @@ class Namer(Visitor[ScopeStack, None]):
         #! decl.ident.value 是变量名字符串
         if ctx.lookup(decl.ident.value):
             raise DecafDeclConflictError(decl.ident.value)
-        #! 构造 VarSymbol, 加入符号表, 设置 Declaration 的 symbol 属性
-        symbol = VarSymbol(decl.ident.value, decl.var_t.type)
+        if decl.init_dim:
+            decl_type = ArrayType.multidim(decl.var_t.type, *[dim.value for dim in decl.init_dim])
+            symbol = VarSymbol(decl.ident.value, decl_type)
+            self.arrays.append(symbol)
+        else:
+            decl_type = decl.var_t.type
+            symbol = VarSymbol(decl.ident.value, decl_type)
         if ctx.isGlobalScope():
             symbol.isGlobal = True
             if decl.init_expr:
@@ -141,6 +148,17 @@ class Namer(Visitor[ScopeStack, None]):
         decl.setattr("symbol", symbol)
         if decl.init_expr:
             decl.init_expr.accept(self, ctx)
+
+    def visitIndexExpr(self, expr: IndexExpr, ctx: ScopeStack) -> None:
+        if isinstance(expr.base, Identifier) and not ctx.lookupOverStack(expr.base.value):
+            raise DecafUndefinedVarError(expr.base.value)
+        expr.base.accept(self, ctx)
+        expr.index.accept(self, ctx)
+        #! 根据 base 类型设置 expr 的类型
+        if isinstance(expr.base, Identifier):
+            expr.setattr('type', expr.base.getattr('symbol').type.indexed)
+        else:
+            expr.setattr('type', expr.base.getattr('type').indexed)
 
     def visitAssignment(self, expr: Assignment, ctx: ScopeStack) -> None:
         self.visitBinary(expr, ctx)

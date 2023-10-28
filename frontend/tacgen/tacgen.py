@@ -13,7 +13,7 @@ from utils.tac.tacinstr import *
 from utils.tac.tacfunc import TACFunc
 from utils.tac.tacprog import TACProg
 from utils.tac.tacvisitor import TACVisitor
-
+from typing import List
 
 """
 The TAC generation phase: translate the abstract syntax tree into three-address code.
@@ -41,10 +41,10 @@ class TACFuncEmitter(TACVisitor):
     """
 
     def __init__(
-        self, entry: FuncLabel, numArgs: int, labelManager: LabelManager
+        self, entry: FuncLabel, numArgs: int, arrays: List[VarSymbol], labelManager: LabelManager
     ) -> None:
         self.labelManager = labelManager
-        self.func = TACFunc(entry, numArgs)
+        self.func = TACFunc(entry, numArgs, arrays)
         self.visitLabel(entry)
         self.nextTempId = 0
 
@@ -111,15 +111,26 @@ class TACFuncEmitter(TACVisitor):
     def visitLabel(self, label: Label) -> None:
         self.func.add(Mark(label))
 
-    def visitLoadIntLiteral(self, symbol: VarSymbol) -> Temp:
+    def visitLoadAddress(self, symbol: VarSymbol):
         addr = self.freshTemp()
         self.func.add(LoadAddress(symbol, addr))
-        self.func.add(LoadIntLiteral(addr, addr, 0))
         return addr
 
-    def visitStoreIntLiteral(self, symbol: VarSymbol, value: Temp) -> None:
-        addr = self.freshTemp()
-        self.func.add(LoadAddress(symbol, addr))
+    def visitLoadIntLiteral(self, symbol: VarSymbol, offset: int = 0) -> Temp:
+        addr = self.visitLoadAddress(symbol)
+        self.func.add(LoadIntLiteral(addr, addr, offset))
+        return addr
+
+    def visitLoadByAddress(self, addr: Temp):
+        dst = self.freshTemp()
+        self.func.add(LoadIntLiteral(dst, addr, 0))
+        return dst
+
+    def visitStoreIntLiteral(self, symbol: VarSymbol, value: Temp, offset: int = 0) -> None:
+        addr = self.visitLoadAddress(symbol)
+        self.func.add(StoreIntLiteral(value, addr, offset))
+
+    def visitStoreByAddress(self, value: Temp, addr: Temp):
         self.func.add(StoreIntLiteral(value, addr, 0))
 
     def visitMemo(self, content: str) -> None:
@@ -158,15 +169,15 @@ class TACGen(Visitor[TACFuncEmitter, None]):
     def transform(self, program: Program) -> TACProg:
         labelManager = LabelManager()
         tacFuncs = []
-        globalVars = program.globalVars()
+        tacGlobalVars = program.globalVars()
         for funcName, astFunc in program.functions().items():
             # in step9, you need to use real parameter count
-            emitter = TACFuncEmitter(FuncLabel(funcName), len(astFunc.params.children), labelManager)
+            emitter = TACFuncEmitter(FuncLabel(funcName), len(astFunc.params.children), astFunc.arrays, labelManager)
             for child in astFunc.params.children:
                 child.accept(self, emitter)
             astFunc.body.accept(self, emitter)
             tacFuncs.append(emitter.visitEnd())
-        return TACProg(tacFuncs, globalVars)
+        return TACProg(tacFuncs, tacGlobalVars)
 
     def visitBlock(self, block: Block, mv: TACFuncEmitter) -> None:
         for child in block:
@@ -193,7 +204,9 @@ class TACGen(Visitor[TACFuncEmitter, None]):
         mv.visitBranch(mv.getContinueLabel())
 
     def visitIdentifier(self, ident: Identifier, mv: TACFuncEmitter) -> None:
-        if ident.getattr("symbol").isGlobal:
+        if isinstance(ident.getattr('symbol').type, ArrayType):
+            ident.setattr('addr', mv.visitLoadAddress(ident.getattr('symbol')))
+        elif ident.getattr("symbol").isGlobal:
             ident.setattr('val', mv.visitLoadIntLiteral(ident.getattr('symbol')))
         else:
             ident.setattr('val', ident.getattr('symbol').temp)
@@ -209,11 +222,30 @@ class TACGen(Visitor[TACFuncEmitter, None]):
                 "val", mv.visitAssignment(decl.getattr("symbol").temp, decl.init_expr.getattr("val"))
             )            
 
+    def visitIndexExpr(self, expr: IndexExpr, mv: TACFuncEmitter) -> None:
+        expr.base.setattr('slice', True)
+        expr.base.accept(self, mv)
+        expr.index.accept(self, mv)
+        #! 递归计算偏移量
+        addr = mv.visitLoad(expr.getattr('type').size)
+        mv.visitBinarySelf(tacop.TacBinaryOp.MUL, addr, expr.index.getattr('val'))
+        mv.visitBinarySelf(tacop.TacBinaryOp.ADD, addr, expr.base.getattr('addr'))
+        expr.setattr('addr', addr)
+        #! 递归计算完毕, 计算数组元素值
+        if not expr.getattr('slice'):
+            expr.setattr('val', mv.visitLoadByAddress(addr))
+
     def visitAssignment(self, expr: Assignment, mv: TACFuncEmitter) -> None:
         #! 对右值进行 accept
         expr.rhs.accept(self, mv)
+        #! 左值是数组元素
+        if isinstance(expr.lhs, IndexExpr):
+            expr.lhs.setattr('slice', True)
+            expr.lhs.accept(self, mv)
+            mv.visitStoreByAddress(expr.rhs.getattr('val'), expr.lhs.getattr('addr'))
+            expr.setattr('val', expr.rhs.getattr("val"))
         #! 左值是全局变量
-        if expr.lhs.getattr('symbol').isGlobal:
+        elif expr.lhs.getattr('symbol').isGlobal:
             mv.visitStoreIntLiteral(expr.lhs.getattr('symbol'), expr.rhs.getattr("val"))
         else:
             expr.lhs.accept(self, mv)

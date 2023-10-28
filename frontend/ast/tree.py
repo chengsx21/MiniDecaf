@@ -57,7 +57,7 @@ class Program(ListNode[Union["Function", "Declaration"]]):
         return {func.ident.value: func for func in self if isinstance(func, Function)}
 
     def globalVars(self) -> dict[str, int]:
-        return {decl.getattr('symbol').name: decl.getattr('symbol').initValue for decl in self if isinstance(decl, Declaration)}
+        return {decl.ident.value: decl for decl in self if isinstance(decl, Declaration)}
 
     def hasMainFunc(self) -> bool:
         return "main" in self.functions()
@@ -86,6 +86,7 @@ class Function(Node):
         self.ident = ident
         self.params = params
         self.body = body
+        self.arrays = []
 
     def __getitem__(self, key: int) -> Node:
         return (

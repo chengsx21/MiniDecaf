@@ -28,8 +28,8 @@ class RiscvAsmEmitter(AsmEmitter):
         super().__init__(allocatableRegs, callerSaveRegs)
 
         self.printer.println(".data")
-        for symbol, value in globalVars.items():
-            self.printer.printGlobalVar(symbol, value)
+        for symbol, decl in globalVars.items():
+            self.printer.printGlobalVar(symbol, decl.getattr("symbol").initValue)
     
         # the start of the asm code
         # int step10, you need to add the declaration of global var here
