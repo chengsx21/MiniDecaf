@@ -29,6 +29,8 @@ t_Comma = ","
 
 t_LParen = "("
 t_RParen = ")"
+t_LBracket = "["
+t_RBracket = "]"
 t_LBrace = "{"
 t_RBrace = "}"
 
