@@ -1,12 +1,13 @@
+from typing import Dict
+
 from frontend.symbol.varsymbol import VarSymbol
 from utils.label.funclabel import FuncLabel
-from typing import List
 
 from .tacinstr import TACInstr
 
 
 class TACFunc:
-    def __init__(self, entry: FuncLabel, numArgs: int, arrays: List[VarSymbol]) -> None:
+    def __init__(self, entry: FuncLabel, numArgs: int, arrays: Dict[str, VarSymbol]) -> None:
         self.entry = entry
         self.numArgs = numArgs
         self.instrSeq = []

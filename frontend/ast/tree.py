@@ -86,7 +86,7 @@ class Function(Node):
         self.ident = ident
         self.params = params
         self.body = body
-        self.arrays = []
+        self.arrays = {}
 
     def __getitem__(self, key: int) -> Node:
         return (

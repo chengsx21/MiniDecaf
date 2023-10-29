@@ -1,5 +1,6 @@
 from typing import Sequence, Tuple
 
+from frontend.ast.tree import *
 from backend.asmemitter import AsmEmitter
 from utils.error import IllegalArgumentException
 from utils.label.label import Label, LabelKind
@@ -23,16 +24,24 @@ class RiscvAsmEmitter(AsmEmitter):
         self,
         allocatableRegs: list[Reg],
         callerSaveRegs: list[Reg],
-        globalVars: dict[str, int],
+        globalVars: dict[str, Declaration],
     ) -> None:
         super().__init__(allocatableRegs, callerSaveRegs)
 
+        #! the start of the asm code
+        #! the declaration of global var here
         self.printer.println(".data")
         for symbol, decl in globalVars.items():
-            self.printer.printGlobalVar(symbol, decl.getattr("symbol").initValue)
-    
-        # the start of the asm code
-        # int step10, you need to add the declaration of global var here
+            if decl.init_expr:
+                self.printer.printGlobalVar(symbol, decl.getattr("symbol").initValue)
+        self.printer.println("")
+
+        self.printer.println(".bss")
+        for symbol, decl in globalVars.items():
+            if not decl.init_expr:
+                self.printer.printGlobalArray(symbol, decl.getattr("symbol").type.size)
+        self.printer.println("")
+
         self.printer.println(".text")
         self.printer.println(".global main")
         self.printer.println("")
@@ -41,12 +50,13 @@ class RiscvAsmEmitter(AsmEmitter):
     # collect some info which is saved in SubroutineInfo for SubroutineEmitter
     def selectInstr(self, func: TACFunc) -> tuple[list[str], SubroutineInfo]:
         #! Visitor 模式
+        info = SubroutineInfo(func.entry, func.numArgs, func.arrays)
+
         selector: RiscvAsmEmitter.RiscvInstrSelector = (
-            RiscvAsmEmitter.RiscvInstrSelector(func.entry)
+            RiscvAsmEmitter.RiscvInstrSelector(func.entry, info)
         )
         for instr in func.getInstrSeq():
             instr.accept(selector)
-        info = SubroutineInfo(func.entry, func.numArgs)
 
         #! 返回 Riscv 类汇编与 FuncLabel 标签
         return (selector.seq, info)
@@ -62,8 +72,9 @@ class RiscvAsmEmitter(AsmEmitter):
 
     # 根据 TAC 指令选择生成 RISC-V 指令
     class RiscvInstrSelector(TACVisitor):
-        def __init__(self, entry: Label) -> None:
+        def __init__(self, entry: Label, info: SubroutineInfo) -> None:
             self.entry = entry
+            self.info = info
             self.seq = []
 
         def visitOther(self, instr: TACInstr) -> None:
@@ -72,7 +83,6 @@ class RiscvAsmEmitter(AsmEmitter):
         def visitAssign(self, instr: Assign) -> None:
             self.seq.append(Riscv.Move(instr.dst, instr.src))
         
-        # in step11, you need to think about how to deal with globalTemp in almost all the visit functions. 
         def visitReturn(self, instr: Return) -> None:
             if instr.value is not None:
                 self.seq.append(Riscv.Move(Riscv.A0, instr.value))
@@ -81,7 +91,10 @@ class RiscvAsmEmitter(AsmEmitter):
             self.seq.append(Riscv.JumpToEpilogue(self.entry))
 
         def visitLoadAddress(self, instr: LoadAddress) -> None:
-            self.seq.append(Riscv.LoadAddress(instr.symbol.name, instr.dsts[0]))
+            if instr.symbol.isGlobal:
+                self.seq.append(Riscv.LoadAddress(instr.symbol.name, instr.dsts[0]))
+            else:
+                self.seq.append(Riscv.ImmAdd(instr.dsts[0], Riscv.SP, self.info.offsets[instr.symbol.name]))
 
         def visitLoadIntLiteral(self, instr: LoadIntLiteral) -> None:
             self.seq.append(Riscv.LoadIntLiteral(instr.dsts[0], instr.srcs[0], instr.offset)) 
@@ -163,7 +176,7 @@ class RiscvSubroutineEmitter(SubroutineEmitter):
         super().__init__(emitter, info)
         
         # + 8 is for the RA and S0 reg 
-        self.nextLocalOffset = 4 * len(Riscv.CalleeSaved) + 8
+        self.nextLocalOffset = 4 * len(Riscv.CalleeSaved) + self.info.size + 8
 
         # the buf which stored all the NativeInstrs in this function
         self.buf: list[NativeInstr] = []
@@ -227,13 +240,13 @@ class RiscvSubroutineEmitter(SubroutineEmitter):
 
         # store RA and CalleeSaved regs here
         self.printer.printInstr(Riscv.SPAdd(-self.nextLocalOffset))
-        self.printer.printInstr(Riscv.NativeStoreWord(Riscv.RA, Riscv.SP, 4 * len(Riscv.CalleeSaved)))
-        self.printer.printInstr(Riscv.NativeStoreWord(Riscv.FP, Riscv.SP, 4 * len(Riscv.CalleeSaved) + 4))
+        self.printer.printInstr(Riscv.NativeStoreWord(Riscv.RA, Riscv.SP, 4 * len(Riscv.CalleeSaved) + self.info.size))
+        self.printer.printInstr(Riscv.NativeStoreWord(Riscv.FP, Riscv.SP, 4 * len(Riscv.CalleeSaved) + self.info.size + 4))
         self.printer.printInstr(Riscv.FPAdd(self.nextLocalOffset))
 
         for i in range(len(Riscv.CalleeSaved)):
             if Riscv.CalleeSaved[i].isUsed():
-                self.printer.printInstr(Riscv.NativeStoreWord(Riscv.CalleeSaved[i], Riscv.SP, 4 * i))
+                self.printer.printInstr(Riscv.NativeStoreWord(Riscv.CalleeSaved[i], Riscv.SP, 4 * i + self.info.size))
 
         self.printer.printComment("end of prologue")
         self.printer.println("")
@@ -250,12 +263,12 @@ class RiscvSubroutineEmitter(SubroutineEmitter):
         self.printer.printLabel(Label(LabelKind.TEMP, self.info.funcLabel.name + Riscv.EPILOGUE_SUFFIX))
         self.printer.printComment("start of epilogue")
 
-        self.printer.printInstr(Riscv.NativeLoadWord(Riscv.RA, Riscv.SP, 4 * len(Riscv.CalleeSaved)))
-        self.printer.printInstr(Riscv.NativeLoadWord(Riscv.FP, Riscv.SP, 4 * len(Riscv.CalleeSaved) + 4))
+        self.printer.printInstr(Riscv.NativeLoadWord(Riscv.RA, Riscv.SP, 4 * len(Riscv.CalleeSaved) + self.info.size))
+        self.printer.printInstr(Riscv.NativeLoadWord(Riscv.FP, Riscv.SP, 4 * len(Riscv.CalleeSaved) + self.info.size + 4))
 
         for i in range(len(Riscv.CalleeSaved)):
             if Riscv.CalleeSaved[i].isUsed():
-                self.printer.printInstr(Riscv.NativeLoadWord(Riscv.CalleeSaved[i], Riscv.SP, 4 * i))
+                self.printer.printInstr(Riscv.NativeLoadWord(Riscv.CalleeSaved[i], Riscv.SP, 4 * i + self.info.size))
 
         self.printer.printInstr(Riscv.SPAdd(self.nextLocalOffset))
         self.printer.printComment("end of epilogue")

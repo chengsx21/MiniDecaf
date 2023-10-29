@@ -1,3 +1,5 @@
+from typing import Dict
+
 from frontend.ast.node import Optional
 from frontend.ast.tree import Function, Optional
 from frontend.ast import node
@@ -13,7 +15,6 @@ from utils.tac.tacinstr import *
 from utils.tac.tacfunc import TACFunc
 from utils.tac.tacprog import TACProg
 from utils.tac.tacvisitor import TACVisitor
-from typing import List
 
 """
 The TAC generation phase: translate the abstract syntax tree into three-address code.
@@ -41,7 +42,7 @@ class TACFuncEmitter(TACVisitor):
     """
 
     def __init__(
-        self, entry: FuncLabel, numArgs: int, arrays: List[VarSymbol], labelManager: LabelManager
+        self, entry: FuncLabel, numArgs: int, arrays: Dict[str, VarSymbol], labelManager: LabelManager
     ) -> None:
         self.labelManager = labelManager
         self.func = TACFunc(entry, numArgs, arrays)

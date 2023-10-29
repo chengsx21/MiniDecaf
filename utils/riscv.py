@@ -171,6 +171,17 @@ class Riscv:
         def __str__(self) -> str:
             return "j " + str(self.target)
 
+    class ImmAdd(TACInstr):
+        def __init__(self, dst: Temp, src: Temp, value: int):
+            super().__init__(InstrKind.SEQ, [dst], [src], None)
+            self.value = value
+
+        def __str__(self) -> str:
+            assert -2048 <= self.value <= 2047  # Riscv imm [11:0]
+            return "addi " + Riscv.FMT3.format(
+                str(self.dsts[0]), str(self.srcs[0]), str(self.value)
+            )
+
     class SPAdd(NativeInstr):
         def __init__(self, offset: int) -> None:
             super().__init__(InstrKind.SEQ, [Riscv.SP], [Riscv.SP], None)
