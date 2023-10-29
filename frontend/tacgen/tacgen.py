@@ -248,6 +248,7 @@ class TACGen(Visitor[TACFuncEmitter, None]):
         #! 左值是全局变量
         elif expr.lhs.getattr('symbol').isGlobal:
             mv.visitStoreIntLiteral(expr.lhs.getattr('symbol'), expr.rhs.getattr("val"))
+            expr.setattr('val', expr.rhs.getattr("val"))
         else:
             expr.lhs.accept(self, mv)
             #! 设置返回值为赋值指令的返回值, 赋值操作更新左值, 左端项是左值 temp
