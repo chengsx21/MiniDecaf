@@ -42,10 +42,15 @@ class TACFuncEmitter(TACVisitor):
     """
 
     def __init__(
-        self, entry: FuncLabel, numArgs: int, arrays: Dict[str, VarSymbol], labelManager: LabelManager
+        self, 
+        entry: FuncLabel, 
+        numArgs: int, 
+        arrays: Dict[str, VarSymbol], 
+        p_arrays: Dict[int, VarSymbol], 
+        labelManager: LabelManager
     ) -> None:
         self.labelManager = labelManager
-        self.func = TACFunc(entry, numArgs, arrays)
+        self.func = TACFunc(entry, numArgs, arrays, p_arrays)
         self.visitLabel(entry)
         self.nextTempId = 0
 
@@ -173,7 +178,7 @@ class TACGen(Visitor[TACFuncEmitter, None]):
         tacGlobalVars = program.globalVars()
         for funcName, astFunc in program.functions().items():
             # in step9, you need to use real parameter count
-            emitter = TACFuncEmitter(FuncLabel(funcName), len(astFunc.params.children), astFunc.arrays, labelManager)
+            emitter = TACFuncEmitter(FuncLabel(funcName), len(astFunc.params.children), astFunc.arrays, astFunc.p_arrays, labelManager)
             for child in astFunc.params.children:
                 child.accept(self, emitter)
             astFunc.body.accept(self, emitter)
@@ -206,22 +211,57 @@ class TACGen(Visitor[TACFuncEmitter, None]):
 
     def visitIdentifier(self, ident: Identifier, mv: TACFuncEmitter) -> None:
         if isinstance(ident.getattr('symbol').type, ArrayType):
-            ident.setattr('addr', mv.visitLoadAddress(ident.getattr('symbol')))
+            if ident.getattr("symbol").isGlobal:
+                ident.setattr('addr', mv.visitLoadAddress(ident.getattr('symbol')))
+                ident.setattr('val', ident.getattr('addr'))
+            elif ident.getattr('symbol') not in mv.func.p_arrays.values():
+                ident.setattr('addr', mv.visitLoadAddress(ident.getattr('symbol')))
+                ident.setattr('val', ident.getattr('addr'))
+            else:
+                ident.setattr('addr', ident.getattr('symbol').temp)
+                ident.setattr('val', ident.getattr('addr'))
         elif ident.getattr("symbol").isGlobal:
             ident.setattr('val', mv.visitLoadIntLiteral(ident.getattr('symbol')))
         else:
             ident.setattr('val', ident.getattr('symbol').temp)
         # 设置返回值为标识符对应的 temp 寄存器
+        
+        
+        # if ident.getattr("symbol").isGlobal:
+        #     ident.setattr('val', mv.visitLoadIntLiteral(ident.getattr('symbol')))
+        # elif isinstance(ident.getattr('symbol').type, ArrayType):
+        #     if ident.getattr('symbol') not in mv.func.p_arrays.values():
+        #         ident.setattr('addr', mv.visitLoadAddress(ident.getattr('symbol')))
+        #         ident.setattr('val', ident.getattr('addr'))
+        #     else:
+        #         ident.setattr('addr', ident.getattr('symbol').temp)
+        # else:
+        #     ident.setattr('val', ident.getattr('symbol').temp)
+        # 设置返回值为标识符对应的 temp 寄存器
 
     def visitDeclaration(self, decl: Declaration, mv: TACFuncEmitter) -> None:
         decl.getattr("symbol").temp = mv.freshTemp()
         if decl.init_expr:
-            #! 对子节点进行 accept
-            decl.init_expr.accept(self, mv)
-            #! 模仿 `visitAssignment` 函数进行赋值
-            decl.setattr(
-                "val", mv.visitAssignment(decl.getattr("symbol").temp, decl.init_expr.getattr("val"))
-            )            
+            if isinstance(decl.init_expr, InitList):
+                #! 调用 `fill_csx` 函数进行初始化
+                symbol = decl.getattr("symbol")
+                addr = mv.visitLoadAddress(symbol)
+                size = symbol.type.full_indexed.size
+                interval = mv.visitLoad(size)
+                mv.visitParam(addr)
+                mv.visitParam(mv.visitLoad(symbol.type.size // size))               
+                mv.visitCall(FuncLabel("fill_csx"))
+                #! 依次将初始化列表中的值存入数组中
+                for value in decl.init_expr.value:
+                    mv.visitStoreByAddress(mv.visitLoad(value), addr)
+                    mv.visitBinarySelf(tacop.TacBinaryOp.ADD, addr, interval)
+            else:
+                #! 对子节点进行 accept
+                decl.init_expr.accept(self, mv)
+                #! 模仿 `visitAssignment` 函数进行赋值
+                decl.setattr(
+                    "val", mv.visitAssignment(decl.getattr("symbol").temp, decl.init_expr.getattr("val"))
+                )            
 
     def visitIndexExpr(self, expr: IndexExpr, mv: TACFuncEmitter) -> None:
         expr.base.setattr('slice', True)

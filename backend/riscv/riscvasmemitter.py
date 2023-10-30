@@ -32,13 +32,15 @@ class RiscvAsmEmitter(AsmEmitter):
         #! the declaration of global var here
         self.printer.println(".data")
         for symbol, decl in globalVars.items():
-            if decl.init_expr:
+            if not decl.init_dim:
                 self.printer.printGlobalVar(symbol, decl.getattr("symbol").initValue)
+            if decl.init_dim and decl.init_expr:
+                self.printer.printGlobalInitArray(symbol, decl.getattr("symbol").initValue)
         self.printer.println("")
 
         self.printer.println(".bss")
         for symbol, decl in globalVars.items():
-            if not decl.init_expr:
+            if decl.init_dim and not decl.init_expr:
                 self.printer.printGlobalArray(symbol, decl.getattr("symbol").type.size)
         self.printer.println("")
 
@@ -82,7 +84,7 @@ class RiscvAsmEmitter(AsmEmitter):
 
         def visitAssign(self, instr: Assign) -> None:
             self.seq.append(Riscv.Move(instr.dst, instr.src))
-        
+
         def visitReturn(self, instr: Return) -> None:
             if instr.value is not None:
                 self.seq.append(Riscv.Move(Riscv.A0, instr.value))

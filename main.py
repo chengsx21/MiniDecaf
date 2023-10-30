@@ -29,9 +29,18 @@ def readCode(fileName):
         return f.read()
 
 
+memsetFunc = r"""
+int fill_csx(int a[], int n) {
+    for (int i = 0; i < n; i = i + 1) {
+        a[i] = 0;
+    }
+    return 0;
+}
+"""
+
 # The parser stage: MiniDecaf code -> Abstract syntax tree
 def step_parse(args: argparse.Namespace):
-    code = readCode(args.input)
+    code = memsetFunc + "\n" + readCode(args.input)
     r: Program = parser.parse(code, lexer=lexer)
 
     errors = parser.error_stack

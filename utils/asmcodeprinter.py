@@ -25,6 +25,11 @@ class AsmCodePrinter:
     def printGlobalArray(self, symbol: str, value: int):
         self.buffer += ".globl " + symbol + "\n" + symbol + ":\n" + self.INDENTS + ".space " + str(value) + "\n"
 
+    def printGlobalInitArray(self, symbol: str, vals: list[int]):
+        self.buffer += ".globl " + symbol + "\n" + symbol + ":\n"
+        for val in vals:
+            self.buffer += self.INDENTS + ".word " + str(val) + "\n"
+
     def printInstr(self, instr: NativeInstr):
         if instr.isLabel():
             self.buffer += str(instr.label) + ":"
