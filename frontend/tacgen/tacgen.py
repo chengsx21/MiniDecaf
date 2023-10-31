@@ -46,7 +46,7 @@ class TACFuncEmitter(TACVisitor):
         entry: FuncLabel, 
         numArgs: int, 
         arrays: Dict[str, VarSymbol], 
-        p_arrays: Dict[int, VarSymbol], 
+        p_arrays: List[VarSymbol], 
         labelManager: LabelManager
     ) -> None:
         self.labelManager = labelManager
@@ -210,33 +210,17 @@ class TACGen(Visitor[TACFuncEmitter, None]):
         mv.visitBranch(mv.getContinueLabel())
 
     def visitIdentifier(self, ident: Identifier, mv: TACFuncEmitter) -> None:
-        if isinstance(ident.getattr('symbol').type, ArrayType):
-            if ident.getattr("symbol").isGlobal:
-                ident.setattr('addr', mv.visitLoadAddress(ident.getattr('symbol')))
-                ident.setattr('val', ident.getattr('addr'))
-            elif ident.getattr('symbol') not in mv.func.p_arrays.values():
-                ident.setattr('addr', mv.visitLoadAddress(ident.getattr('symbol')))
-                ident.setattr('val', ident.getattr('addr'))
+        symbol = ident.getattr('symbol')
+        if isinstance(symbol.type, ArrayType):
+            if symbol.isGlobal or symbol not in mv.func.p_arrays:
+                ident.setattr('addr', mv.visitLoadAddress(symbol))
             else:
-                ident.setattr('addr', ident.getattr('symbol').temp)
-                ident.setattr('val', ident.getattr('addr'))
-        elif ident.getattr("symbol").isGlobal:
-            ident.setattr('val', mv.visitLoadIntLiteral(ident.getattr('symbol')))
+                ident.setattr('addr', symbol.temp)
+            ident.setattr('val', ident.getattr('addr'))
+        elif symbol.isGlobal:
+            ident.setattr('val', mv.visitLoadIntLiteral(symbol))
         else:
-            ident.setattr('val', ident.getattr('symbol').temp)
-        # 设置返回值为标识符对应的 temp 寄存器
-        
-        
-        # if ident.getattr("symbol").isGlobal:
-        #     ident.setattr('val', mv.visitLoadIntLiteral(ident.getattr('symbol')))
-        # elif isinstance(ident.getattr('symbol').type, ArrayType):
-        #     if ident.getattr('symbol') not in mv.func.p_arrays.values():
-        #         ident.setattr('addr', mv.visitLoadAddress(ident.getattr('symbol')))
-        #         ident.setattr('val', ident.getattr('addr'))
-        #     else:
-        #         ident.setattr('addr', ident.getattr('symbol').temp)
-        # else:
-        #     ident.setattr('val', ident.getattr('symbol').temp)
+            ident.setattr('val', symbol.temp)
         # 设置返回值为标识符对应的 temp 寄存器
 
     def visitDeclaration(self, decl: Declaration, mv: TACFuncEmitter) -> None:
@@ -284,17 +268,14 @@ class TACGen(Visitor[TACFuncEmitter, None]):
             expr.lhs.setattr('slice', True)
             expr.lhs.accept(self, mv)
             mv.visitStoreByAddress(expr.rhs.getattr('val'), expr.lhs.getattr('addr'))
-            expr.setattr('val', expr.rhs.getattr("val"))
         #! 左值是全局变量
         elif expr.lhs.getattr('symbol').isGlobal:
             mv.visitStoreIntLiteral(expr.lhs.getattr('symbol'), expr.rhs.getattr("val"))
-            expr.setattr('val', expr.rhs.getattr("val"))
         else:
             expr.lhs.accept(self, mv)
             #! 设置返回值为赋值指令的返回值, 赋值操作更新左值, 左端项是左值 temp
-            expr.setattr(
-                "val", mv.visitAssignment(expr.lhs.getattr("symbol").temp, expr.rhs.getattr("val"))
-            )
+            mv.visitAssignment(expr.lhs.getattr("symbol").temp, expr.rhs.getattr("val"))
+        expr.setattr('val', expr.rhs.getattr("val"))
 
     def visitIf(self, stmt: If, mv: TACFuncEmitter) -> None:
         stmt.cond.accept(self, mv)
@@ -356,7 +337,6 @@ class TACGen(Visitor[TACFuncEmitter, None]):
 
     def visitUnary(self, expr: Unary, mv: TACFuncEmitter) -> None:
         expr.operand.accept(self, mv)
-
         op = {
             node.UnaryOp.Neg: tacop.TacUnaryOp.NEG,
             node.UnaryOp.BitNot: tacop.TacUnaryOp.BIT_NOT,
@@ -368,7 +348,6 @@ class TACGen(Visitor[TACFuncEmitter, None]):
     def visitBinary(self, expr: Binary, mv: TACFuncEmitter) -> None:
         expr.lhs.accept(self, mv)
         expr.rhs.accept(self, mv)
-
         op = {
             node.BinaryOp.Add: tacop.TacBinaryOp.ADD,
             node.BinaryOp.Sub: tacop.TacBinaryOp.SUB,

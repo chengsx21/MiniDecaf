@@ -14,6 +14,14 @@ from utils.printtree import TreePrinter
 from utils.riscv import Riscv
 from utils.tac.tacprog import TACProg
 
+memsetFunc = r"""
+int fill_csx(int array[], int cnt) {
+    for (int i = 0; i < cnt; i = i + 1) {
+        array[i] = 0;
+    }
+    return 0;
+}
+"""
 
 def parseArgs():
     parser = argparse.ArgumentParser(description="MiniDecaf compiler")
@@ -28,15 +36,6 @@ def readCode(fileName):
     with open(fileName, "r") as f:
         return f.read()
 
-
-memsetFunc = r"""
-int fill_csx(int a[], int n) {
-    for (int i = 0; i < n; i = i + 1) {
-        a[i] = 0;
-    }
-    return 0;
-}
-"""
 
 # The parser stage: MiniDecaf code -> Abstract syntax tree
 def step_parse(args: argparse.Namespace):

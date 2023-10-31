@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import List, Dict
 
 from frontend.symbol.varsymbol import VarSymbol
 from utils.label.funclabel import FuncLabel
@@ -12,7 +12,7 @@ class TACFunc:
         entry: FuncLabel, 
         numArgs: int, 
         arrays: Dict[str, VarSymbol], 
-        p_arrays: Dict[int, VarSymbol]
+        p_arrays: List[VarSymbol]
     ) -> None:
         self.entry = entry
         self.numArgs = numArgs

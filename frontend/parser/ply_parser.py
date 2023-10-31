@@ -108,28 +108,28 @@ def p_parameter(p):
 
 def p_parameter_array(p):
     """
-    parameter : type Identifier param_dim_list
+    parameter : type Identifier dim_list
     """
     p[0] = Parameter(p[1], p[2], p[3])
 
 
-def p_parameter_array_empty(p):
+def p_dim_list_empty(p):
     """
-    param_dim_list : LBracket RBracket
+    dim_list : LBracket RBracket
     """
     p[0] = [NULL]
 
 
-def p_parameter_array_not_empty(p):
+def p_dim_list_not_empty(p):
     """
-    param_dim_list : LBracket Integer RBracket
+    dim_list : LBracket Integer RBracket
     """
     p[0] = [p[2]]
 
 
-def p_parameter_array_dim(p):
+def p_dim_list(p):
     """
-    param_dim_list : param_dim_list LBracket Integer RBracket
+    dim_list : dim_list LBracket Integer RBracket
     """
     p[1].append(p[3])
     p[0] = p[1]
@@ -281,21 +281,6 @@ def p_declaration_array_init(p):
     declaration : type Identifier dim_list Assign init_list
     """
     p[0] = Declaration(p[1], p[2], p[5], p[3])
-
-
-def p_declaration_array_empty(p):
-    """
-    dim_list : empty
-    """
-    p[0] = []
-
-
-def p_declaration_array_dim(p):
-    """
-    dim_list : dim_list LBracket Integer RBracket
-    """
-    p[1].append(p[3])
-    p[0] = p[1]
 
 
 def p_declaration_array_init_elem_single(p):

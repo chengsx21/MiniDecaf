@@ -23,7 +23,7 @@ syntax tree and store them in symbol tables (i.e. scopes).
 class Namer(Visitor[ScopeStack, None]):
     def __init__(self) -> None:
         self.arrays = {}
-        self.p_arrays = {}
+        self.p_arrays = []
 
     # Entry of this phase
     def transform(self, program: Program) -> Program:
@@ -50,20 +50,19 @@ class Namer(Visitor[ScopeStack, None]):
         GlobalScope.declare(symbol)
         func.setattr('symbol', symbol)
 
-        self.arrays = {}
-        self.p_arrays = {}
-
         ctx.open()
+        self.arrays = {}
+        self.p_arrays = []
         func.params.accept(self, ctx)
         for index, param in enumerate(func.params.children):
             if isinstance(param.ident.getattr('type'), ArrayType):
-                self.p_arrays[index] = param.getattr('symbol')
+                self.p_arrays.append(param.getattr('symbol'))
         for child in func.body.children:
             child.accept(self, ctx)
         func.arrays = self.arrays
-        func.p_arrays = self.p_arrays
         self.arrays = {}
-        self.p_arrays = {}
+        func.p_arrays = self.p_arrays
+        self.p_arrays = []
         ctx.close()
 
     def visitBlock(self, block: Block, ctx: ScopeStack) -> None:
